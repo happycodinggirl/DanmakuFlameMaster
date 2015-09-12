@@ -52,6 +52,11 @@ public class BiliDanmakuLoader implements ILoader {
     }
 
     @Override
+    public void load(Object data) {
+
+    }
+
+    @Override
     public AndroidFileSource getDataSource() {
         return dataSource;
     }

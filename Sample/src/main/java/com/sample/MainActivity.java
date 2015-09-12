@@ -2,12 +2,15 @@
 package com.sample;
 
 import android.app.Activity;
+import android.content.Context;
 import android.content.pm.ActivityInfo;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.Point;
 import android.graphics.drawable.Drawable;
 import android.media.MediaPlayer;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.SystemClock;
@@ -16,8 +19,13 @@ import android.text.SpannableStringBuilder;
 import android.text.TextPaint;
 import android.text.style.BackgroundColorSpan;
 import android.text.style.ImageSpan;
+import android.util.DisplayMetrics;
+import android.util.Log;
+import android.util.TypedValue;
+import android.view.Display;
 import android.view.Menu;
 import android.view.View;
+import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.PopupWindow;
 import android.widget.VideoView;
@@ -41,6 +49,7 @@ import master.flame.danmaku.danmaku.parser.BaseDanmakuParser;
 import master.flame.danmaku.danmaku.parser.DanmakuFactory;
 import master.flame.danmaku.danmaku.parser.IDataSource;
 import master.flame.danmaku.danmaku.parser.android.BiliDanmukuParser;
+import master.flame.danmaku.self.MyDanuSource;
 
 public class MainActivity extends Activity implements View.OnClickListener {
 
@@ -67,6 +76,10 @@ public class MainActivity extends Activity implements View.OnClickListener {
     private Button mBtnSendDanmakuTextAndImage;
 
     private Button mBtnSendDanmakus;
+    private int screenWidth;
+    private int singleLine;
+
+    MyDanuSource mDanuSource;
 
     private static class BackgroundCacheStuffer extends SpannedCacheStuffer {
         // 通过扩展SimpleTextCacheStuffer或SpannedCacheStuffer个性化你的弹幕样式
@@ -94,9 +107,19 @@ public class MainActivity extends Activity implements View.OnClickListener {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        getScreenWidth(this);
+        MsgDanu msgDanu=new MsgDanu();
+        msgDanu.setMsg("item ");
+        mDanuSource=new MyDanuSource(msgDanu);
         findViews();
+
+
     }
 
+
+    public int dp2px(int value) {
+        return (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, value,getResources().getDisplayMetrics());
+    }
     private BaseDanmakuParser createParser(InputStream stream) {
 
         if (stream == null) {
@@ -118,6 +141,24 @@ public class MainActivity extends Activity implements View.OnClickListener {
         }
         BaseDanmakuParser parser = new BiliDanmukuParser();
         IDataSource<?> dataSource = loader.getDataSource();
+        parser.load(dataSource);
+        return parser;
+
+    }
+
+
+
+
+
+
+    private BaseDanmakuParser createParser() {
+
+        ILoader loader = DanmakuLoaderFactory.create(DanmakuLoaderFactory.TAG_MY);
+        Log.v("TAG","------mDanuSource is "+mDanuSource);
+        loader.load(mDanuSource);
+        BaseDanmakuParser parser = new MyDamuParser(mDanmakuView);
+        IDataSource<?> dataSource = loader.getDataSource();
+
         parser.load(dataSource);
         return parser;
 
@@ -150,7 +191,7 @@ public class MainActivity extends Activity implements View.OnClickListener {
 
         // 设置最大显示行数
         HashMap<Integer, Integer> maxLinesPair = new HashMap<Integer, Integer>();
-        maxLinesPair.put(BaseDanmaku.TYPE_SCROLL_RL, 3); // 滚动弹幕最大显示3行
+        maxLinesPair.put(BaseDanmaku.TYPE_SCROLL_RL, 12); // 滚动弹幕最大显示3行
         // 设置是否禁止重叠
         HashMap<Integer, Boolean> overlappingEnablePair = new HashMap<Integer, Boolean>();
         overlappingEnablePair.put(BaseDanmaku.TYPE_SCROLL_RL, true);
@@ -162,7 +203,7 @@ public class MainActivity extends Activity implements View.OnClickListener {
         .setMaximumLines(maxLinesPair)
         .preventOverlapping(overlappingEnablePair);
         if (mDanmakuView != null) {
-            mParser = createParser(this.getResources().openRawResource(R.raw.comments));
+            mParser = createParser();
             mDanmakuView.setCallback(new Callback() {
                 @Override
                 public void updateTimer(DanmakuTimer timer) {
@@ -194,6 +235,37 @@ public class MainActivity extends Activity implements View.OnClickListener {
             });
             mVideoView.setVideoPath(Environment.getExternalStorageDirectory() + "/1.flv");
         }
+
+    }
+
+
+    public void getScreenWidth(Context context){
+
+        if (Build.VERSION.SDK_INT >= 17){
+            Display display = getWindowManager().getDefaultDisplay();
+            Point point=new Point();
+
+            DisplayMetrics realMetrics = new DisplayMetrics();
+            display.getRealMetrics(realMetrics);
+            display.getRealSize(point);
+            screenWidth= point.y;
+
+            int dis=screenWidth-dp2px(18);
+            singleLine=dis/12;
+            Log.v("TAG","-----single line is "+singleLine+" screen width is "+screenWidth+"    screenHeight is "+point.y);
+
+        } else{
+            DisplayMetrics dm=context.getResources().getDisplayMetrics();
+            screenWidth=dm.heightPixels;
+            int dis=screenWidth-dp2px(18);
+            singleLine=dis/12;
+            Log.v("TAG","-----single line is "+singleLine+"    ----screenWidth is "+screenWidth+"-----screenHeight is "+dm.heightPixels);
+            //singleLine=(screenWidth-dp2px(18))/12;
+
+
+        }
+
+
 
     }
 
@@ -259,7 +331,9 @@ public class MainActivity extends Activity implements View.OnClickListener {
         } else if (v == mBtnResumeDanmaku) {
             mDanmakuView.resume();
         } else if (v == mBtnSendDanmaku) {
-            addDanmaku(false);
+            for (int i=0;i<12;i++) {
+                addDanmaku(false);
+            }
         } else if (v == mBtnSendDanmakuTextAndImage) {
             addDanmaKuShowTextAndImage(false);
         } else if (v == mBtnSendDanmakus) {
@@ -302,7 +376,7 @@ public class MainActivity extends Activity implements View.OnClickListener {
         danmaku.priority = 1;
         danmaku.isLive = islive;
         danmaku.time = mDanmakuView.getCurrentTime() + 1200;
-        danmaku.textSize = 25f * (mParser.getDisplayer().getDensity() - 0.6f);
+        danmaku.textSize = singleLine-danmaku.padding*2;
         danmaku.textColor = Color.RED;
         danmaku.textShadowColor = Color.WHITE;
         // danmaku.underlineColor = Color.GREEN;

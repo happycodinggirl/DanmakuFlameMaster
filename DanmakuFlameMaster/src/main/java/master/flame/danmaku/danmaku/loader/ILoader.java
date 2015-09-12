@@ -20,7 +20,7 @@ import java.io.InputStream;
 
 import master.flame.danmaku.danmaku.parser.IDataSource;
 
-public interface ILoader {
+public interface ILoader<T> {
     /**
      * @return data source
      */
@@ -34,4 +34,8 @@ public interface ILoader {
      * @param in stream from Internet or local file
      */
     void load(InputStream in) throws IllegalDataException;
+
+
+
+    void load(T data);
 }

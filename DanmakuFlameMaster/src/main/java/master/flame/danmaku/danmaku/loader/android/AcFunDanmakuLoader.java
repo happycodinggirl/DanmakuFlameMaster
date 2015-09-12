@@ -48,6 +48,11 @@ public class AcFunDanmakuLoader implements ILoader{
 			throw new IllegalDataException(e);
 		}
 	}
-	
+
+	@Override
+	public void load(Object data) {
+
+	}
+
 
 }
